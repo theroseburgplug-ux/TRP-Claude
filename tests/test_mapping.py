@@ -70,3 +70,30 @@ def test_loona_adapter_is_an_explicit_stub(capsys):
         LoonaAdapter().read_range()
     assert main(["run", "--out", "unused"]) == 2
     assert "not implemented" in capsys.readouterr().err
+
+
+def test_discover_finds_open_port_and_banner():
+    import socket
+    import threading
+
+    from loona_mapper.discover import expand, scan
+
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    port = srv.getsockname()[1]
+
+    def serve():
+        conn, _ = srv.accept()
+        conn.recv(1024)
+        conn.sendall(b"HTTP/1.0 200 OK\r\nServer: fake-loona\r\n\r\n")
+        conn.close()
+
+    threading.Thread(target=serve, daemon=True).start()
+    found = scan(["127.0.0.1"], ports=[port, port + 1 if port < 65535 else port - 1])
+    srv.close()
+    assert "fake-loona" in found["127.0.0.1"][port]
+    assert len(found["127.0.0.1"]) == 1
+    assert expand("10.0.0.0/30") == ["10.0.0.1", "10.0.0.2"]
+    with pytest.raises(ValueError):
+        expand("10.0.0.0/16")

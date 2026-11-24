@@ -57,6 +57,27 @@ def _cmd_render(a: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_discover(a: argparse.Namespace) -> int:
+    from .discover import DEFAULT_PORTS, expand, scan
+
+    ports = [int(p) for p in a.ports.split(",")] if a.ports else DEFAULT_PORTS
+    try:
+        hosts = expand(a.target)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    print(f"probing {len(hosts)} host(s) x {len(ports)} port(s)...")
+    found = scan(hosts, ports, timeout=a.timeout)
+    if not found:
+        print("no open TCP ports found. The robot may use UDP, BLE, or only talk to a cloud service.")
+        return 1
+    for host, open_ports in sorted(found.items()):
+        print(host)
+        for port, banner in sorted(open_ports.items()):
+            print(f"  {port}/tcp open  {banner}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="loona-map", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -78,6 +99,12 @@ def main(argv=None) -> int:
     g.add_argument("png")
     g.add_argument("--scale", type=int, default=4)
     g.set_defaults(fn=_cmd_render)
+
+    d = sub.add_parser("discover", help="probe your LAN for what Loona exposes")
+    d.add_argument("target", help="IP address, hostname, or CIDR block (e.g. 192.168.1.0/24)")
+    d.add_argument("--ports", help="comma-separated TCP ports (default: common IoT ports)")
+    d.add_argument("--timeout", type=float, default=0.5)
+    d.set_defaults(fn=_cmd_discover)
 
     a = p.parse_args(argv)
     return a.fn(a)

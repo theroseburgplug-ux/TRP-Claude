@@ -21,6 +21,10 @@ I don't know of a documented public control API for Loona, so the adapter is
 a stub that documents exactly what the mapper needs. Until it is filled in,
 the tool can only run in simulation.
 
+Loona's app talks to it over Wi-Fi, but I haven't identified the protocol.
+See [docs/finding-the-loona-protocol.md](docs/finding-the-loona-protocol.md)
+and `loona-map discover <ip>` for how to find out.
+
 ## Quick start
 
 ```bash
